@@ -10,27 +10,31 @@ module.exports = function (opts) {
   function add(pattern, fn) {
     bloom.add(pattern, fn)
   }
-
+ 
   function act(args, cb) {
-    var match = bloom.list(args).pop()
+  	console.log('local act({'+args.role+':'+args.cmd+'})')
+    var matches = bloom.list(args)
     var err
-    if (!match) {
+    if (matches.length === 0) {
       err = Error('no matching pattern')
       err.code = 404
       cb && cb(err)
       return
     }
 
-    if (!(match instanceof Function)) {      
-      err = Error('no matching pattern')
-      err.code = 400
-      cb && cb(err)
-      return 
-    }
-    match(args, cb || function (err) {
-      if (err) { 
-        console.error('Lucius error: ', err) 
-      }
-    })
-  }
+    matches.forEach(function (match) {
+			if (!(match instanceof Function)) {      
+				err = Error('no matching pattern')
+				err.code = 400
+				cb && cb(err)
+				return 
+			}
+    
+			match(args, cb || function (err) {
+				if (err) { 
+					console.error('Lucius error: ', err) 
+				}
+			})
+		})
+  } 
 }

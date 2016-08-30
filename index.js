@@ -1,16 +1,20 @@
 var local = require('./transports/local')
 var http = require('./transports/http')
+var stager = require('./transports/stager')
 
 function lucius(opts) {
   opts = opts || {}
   opts.local = 'local' in opts ? opts.local : true
-  var transports = [local(opts), http(opts)].filter(Boolean)
+  opts.stager = 'stager' in opts ? opts.stager : true
+  var transports = [stager(opts), local(opts), http(opts)].filter(Boolean)
   var adders = transports.filter(function (t) { return t.add })
 
   return {
     add: add,
     act: act,
-    use: use
+    use: use,
+    backStage: backStage,
+    backStageBulk: backStageBulk
   }
 
   function add(pattern, fn) {
@@ -19,6 +23,16 @@ function lucius(opts) {
     })
     return this
   }
+  
+  function backStage(pattern, compPattern) {
+  	transports[0].backStage(pattern, compPattern)
+  }
+  
+  function backStageBulk(patterns) {
+  	patterns.forEach(function(ele){
+  		backStage(ele[0], ele[1])
+  	})
+  }  
   
   function act(args, cb) {
     var t = 0
@@ -33,8 +47,8 @@ function lucius(opts) {
         return
       }
       transports[t](args, function (err, res) {
-        if (err && err.code >= 400) {
-          errs.push(err)
+        if ((err && err.code >= 400) || (res && res.code === 204)) {
+          err && errs.push(err)
           t += 1
           enact()
           return
